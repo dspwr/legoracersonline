@@ -68,7 +68,7 @@ namespace LEGORacersAPI
         }
         public short ReadShort(int address)
         {
-            return BitConverter.ToInt16(ReadBytes(address, 4), 0);
+            return BitConverter.ToInt16(ReadBytes(address, 2), 0);
         }
 
         public byte[] GetStringBytes(string input)

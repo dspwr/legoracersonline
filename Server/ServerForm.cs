@@ -1,15 +1,7 @@
 ﻿using Library;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Server
@@ -111,7 +103,10 @@ namespace Server
                     case 0:
                         lblUpgradeCrystals.Text += "None";
                         break;
-                    case 1: case 2: case 3: case 4:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
                         lblUpgradeCrystals.Text += Settings.PowerUpWhiteBricks.ToString();
                         break;
                 }
@@ -244,10 +239,10 @@ namespace Server
                     }
 
                     gameServer.SendAll(new Packet()
-                        {
-                            PacketType = PacketType.Race,
-                            Content = packetContent
-                        });
+                    {
+                        PacketType = PacketType.Race,
+                        Content = packetContent
+                    });
                 }
             }
         }
