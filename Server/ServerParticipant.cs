@@ -14,6 +14,11 @@ namespace Server
         public bool RemoveFromServer { get; set; }
 
         /// <summary>
+        /// Accumulation buffer for partial TCP packets (length-prefix framing).
+        /// </summary>
+        public byte[] PendingData { get; set; } = new byte[0];
+
+        /// <summary>
         /// Gets or sets the DateTime the Participant contacted the Server the last time.
         /// </summary>
         public DateTime LastActivity { get; set; }
