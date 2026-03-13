@@ -11,6 +11,7 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using System.Globalization;
 
 namespace Client
 {
@@ -438,18 +439,18 @@ namespace Client
                         {
                             Participant foundPlayer = foundPlayers.First();
 
-                            foundPlayer.X = float.Parse(playerPart[1]);
-                            foundPlayer.Y = float.Parse(playerPart[2]);
-                            foundPlayer.Z = float.Parse(playerPart[3]);
-                            foundPlayer.SpeedX = float.Parse(playerPart[4]);
-                            foundPlayer.SpeedY = float.Parse(playerPart[5]);
-                            foundPlayer.SpeedZ = float.Parse(playerPart[6]);
-                            foundPlayer.VectorX1 = float.Parse(playerPart[7]);
-                            foundPlayer.VectorY1 = float.Parse(playerPart[8]);
-                            foundPlayer.VectorZ1 = float.Parse(playerPart[9]);
-                            foundPlayer.VectorX2 = float.Parse(playerPart[10]);
-                            foundPlayer.VectorY2 = float.Parse(playerPart[11]);
-                            foundPlayer.VectorZ2 = float.Parse(playerPart[12]);
+                            foundPlayer.X = float.Parse(playerPart[1], CultureInfo.InvariantCulture);
+                            foundPlayer.Y = float.Parse(playerPart[2], CultureInfo.InvariantCulture);
+                            foundPlayer.Z = float.Parse(playerPart[3], CultureInfo.InvariantCulture);
+                            foundPlayer.SpeedX = float.Parse(playerPart[4], CultureInfo.InvariantCulture);
+                            foundPlayer.SpeedY = float.Parse(playerPart[5], CultureInfo.InvariantCulture);
+                            foundPlayer.SpeedZ = float.Parse(playerPart[6], CultureInfo.InvariantCulture);
+                            foundPlayer.VectorX1 = float.Parse(playerPart[7], CultureInfo.InvariantCulture);
+                            foundPlayer.VectorY1 = float.Parse(playerPart[8], CultureInfo.InvariantCulture);
+                            foundPlayer.VectorZ1 = float.Parse(playerPart[9], CultureInfo.InvariantCulture);
+                            foundPlayer.VectorX2 = float.Parse(playerPart[10], CultureInfo.InvariantCulture);
+                            foundPlayer.VectorY2 = float.Parse(playerPart[11], CultureInfo.InvariantCulture);
+                            foundPlayer.VectorZ2 = float.Parse(playerPart[12], CultureInfo.InvariantCulture);
                             foundPlayer.PowerUpType = int.Parse(playerPart[13]);
                             foundPlayer.PowerUpWhiteBricks = int.Parse(playerPart[14]);
                         }
