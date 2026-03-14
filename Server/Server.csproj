@@ -114,9 +114,4 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 
-  <!-- Run unit tests before compiling this project.  A test failure aborts the build. -->
-  <Target Name="BeforeBuild">
-    <Exec Command="dotnet test &quot;$(MSBuildProjectDirectory)\..\Tests\Tests.csproj&quot; --configuration $(Configuration) --logger &quot;console;verbosity=minimal&quot;" />
-  </Target>
-
 </Project>

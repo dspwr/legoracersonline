@@ -65,6 +65,9 @@ namespace Library
                 case "Disconnect":
                     packetType = PacketType.Disconnect;
                     break;
+                case "ConnectionRejected":
+                    packetType = PacketType.ConnectionRejected;
+                    break;
             }
 
             if (packetType == PacketType.None)

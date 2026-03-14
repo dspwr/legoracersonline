@@ -10,6 +10,9 @@ namespace Server
     {
         private Server gameServer;
 
+        // Optional callback for setups where server process also hosts a local game client.
+        public Action<int, int, int> HostRaceStarter { get; set; }
+
         public ServerForm()
         {
             InitializeComponent();
@@ -227,35 +230,27 @@ namespace Server
 
                 if (challengeForm.SelectedCircuit != null)
                 {
-                    string packetContent = "";
+                    int circuit = challengeForm.Mirror ? challengeForm.SelectedCircuit.MirrorBlockNumber : challengeForm.SelectedCircuit.BlockNumber;
+                    int race    = challengeForm.Mirror ? challengeForm.SelectedCircuit.MirrorNumber      : challengeForm.SelectedCircuit.Number;
 
-                    if (challengeForm.Mirror)
-                    {
-                        packetContent = challengeForm.SelectedCircuit.MirrorBlockNumber + "|" + challengeForm.SelectedCircuit.MirrorNumber;
-                    }
-                    else
-                    {
-                        packetContent = challengeForm.SelectedCircuit.BlockNumber + "|" + challengeForm.SelectedCircuit.Number;
-                    }
-
-                    gameServer.SendAll(new Packet()
-                    {
-                        PacketType = PacketType.Race,
-                        Content = packetContent
-                    });
-
-                    gameServer.RaceActive = true;
+                    StartRace(circuit, race);
                 }
+            }
+        }
+
+        private void StartRace(int trackId, int laps)
+        {
+            gameServer.StartRace(trackId, laps);
+
+            if (HostRaceStarter != null)
+            {
+                HostRaceStarter(trackId, laps, gameServer.ActiveParticipantsCount);
             }
         }
 
         private void timerCleanUp_Tick(object sender, EventArgs e)
         {
-            ZombieCleanup.PerformCleanup(
-                gameServer.Participants,
-                gameServer.RaceActive,
-                TimeSpan.FromSeconds(30),
-                p => gameServer.DisconnectParticipant((ServerParticipant)p));
+            gameServer.CleanupInactiveParticipants(TimeSpan.FromSeconds(30));
         }
 
         private void threeWhiteBricksToolStripMenuItem_Click(object sender, EventArgs e)

@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace Server
 {
-    class Server
+    class Server : IServerPacketBroadcaster
     {
         private bool started;
         private TcpListener tcpServer;
@@ -34,6 +34,17 @@ namespace Server
         public List<ServerParticipant> Participants
         {
             get { return participants; }
+        }
+
+        public int ActiveParticipantsCount
+        {
+            get
+            {
+                lock (_participantsLock)
+                {
+                    return participants.Count(p => !p.RemoveFromServer);
+                }
+            }
         }
 
         public delegate void ServerUpdatedHandler(object sender, ServerUpdatedEventArgs data);
@@ -179,6 +190,13 @@ namespace Server
         {
             if (packet.PacketType == PacketType.Connect)
             {
+                if (ServerLogic.ShouldRejectNewConnection(RaceActive))
+                {
+                    participant.RemoveFromServer = true;
+                    Send(stream, ServerLogic.BuildConnectionRejectionPacket());
+                    return;
+                }
+
                 List<ServerParticipant> current;
                 lock (_participantsLock)
                 {
@@ -362,6 +380,11 @@ namespace Server
             }
         }
 
+        public void SendToAll(Packet packet)
+        {
+            SendAll(packet);
+        }
+
         public void SendAll(Packet packet, string except)
         {
             List<ServerParticipant> snapshot;
@@ -377,6 +400,15 @@ namespace Server
             }
         }
 
+        public void StartRace(int circuit, int race)
+        {
+            RaceActive = ServerLogic.StartRace(
+                circuit,
+                race,
+                ActiveParticipantsCount,
+                this);
+        }
+
         public void DisconnectParticipant(ServerParticipant participant)
         {
             SendAll(new Packet()
@@ -385,7 +417,10 @@ namespace Server
                 Content = participant.Nickname
             });
 
-            participant.RemoveFromServer = true;
+            lock (_participantsLock)
+            {
+                participant.RemoveFromServer = true;
+            }
 
             List<ServerParticipant> active;
             lock (_participantsLock)
@@ -393,6 +428,30 @@ namespace Server
                 active = participants.Where(p => !p.RemoveFromServer).ToList();
             }
             OnServerUpdated(this, new ServerUpdatedEventArgs(active));
+        }
+
+        public int CleanupInactiveParticipants(TimeSpan timeout)
+        {
+            if (!RaceActive)
+            {
+                return 0;
+            }
+
+            List<ServerParticipant> zombies;
+            lock (_participantsLock)
+            {
+                DateTime now = DateTime.Now;
+                zombies = participants
+                    .Where(p => !p.RemoveFromServer && (now - p.LastActivity) > timeout)
+                    .ToList();
+            }
+
+            foreach (ServerParticipant zombie in zombies)
+            {
+                DisconnectParticipant(zombie);
+            }
+
+            return zombies.Count;
         }
 
         public void DisconnectAll()

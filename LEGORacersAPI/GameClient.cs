@@ -107,6 +107,11 @@ namespace LEGORacersAPI
         private MemoryManager memoryManager;
         private Thread initializeThread;
         protected Process process;
+        private bool menuButtonsPatched;
+        private byte[] menuButtonStateBackup;
+        private byte[] versusAvailabilityBackup;
+        private byte racerSelectCancelBackup;
+        private byte versusTextLineBackup;
 
         /// <summary>
         /// Gets the local in-game player.
@@ -292,6 +297,8 @@ namespace LEGORacersAPI
                     }
                 }
             }
+
+            Driver.ResetDriverCounter();
         }
 
         /// <summary>
@@ -586,7 +593,43 @@ namespace LEGORacersAPI
                 Thread.Sleep(30);
 
                 GotoMenu(Menu.ChooseRacer);
+
+                Thread.Sleep(30);
+
+                // Simulate clicking "Let's Go!" to force the game to start loading the race.
+                GotoMenu(Menu.StartRace);
             }
+        }
+
+        /// <summary>
+        /// Applies race settings and forces the game to transition from menu to loading screen.
+        /// </summary>
+        /// <param name="trackId">Track identifier.</param>
+        /// <param name="laps">Race/lap value sent by the server protocol.</param>
+        /// <param name="networkOpponents">Amount of remote opponents to reserve AI slots for.</param>
+        public void SetupAndStartRace(int trackId, int laps, int networkOpponents)
+        {
+            if (!initialized)
+            {
+                return;
+            }
+
+            if (networkOpponents < 0)
+            {
+                networkOpponents = 0;
+            }
+            else if (networkOpponents > 5)
+            {
+                networkOpponents = 5;
+            }
+
+            AIDriversAmount = networkOpponents;
+            LoadRRB = false;
+
+            // Remove server-wait UI restrictions before navigating menus automatically.
+            RestoreMenuButtons();
+
+            SetupRace(trackId, laps);
         }
 
         /// <summary>
@@ -696,6 +739,25 @@ namespace LEGORacersAPI
         public bool RemoveMenuButtons()
         {
             bool result = true;
+
+            if (!menuButtonsPatched)
+            {
+                int menuButtonsOffsetBase = MAINMENU_BUTTONS_BASE + 0xB;
+                menuButtonStateBackup = new byte[6]
+                {
+                    memoryManager.ReadByte(menuButtonsOffsetBase),
+                    memoryManager.ReadByte(menuButtonsOffsetBase + 1 * 0x14),
+                    memoryManager.ReadByte(menuButtonsOffsetBase + 2 * 0x14),
+                    memoryManager.ReadByte(menuButtonsOffsetBase + 3 * 0x14),
+                    memoryManager.ReadByte(menuButtonsOffsetBase + 4 * 0x14),
+                    memoryManager.ReadByte(menuButtonsOffsetBase + 5 * 0x14)
+                };
+
+                racerSelectCancelBackup = memoryManager.ReadByte(RACERSELECT_BUTTONS_BASE + 0x49);
+                versusAvailabilityBackup = memoryManager.ReadBytes(MAINMENU_BUTTONS_BASE + 0x98, 4);
+                versusTextLineBackup = memoryManager.ReadByte(MAINMENU_BUTTONS_BASE + 0x3D);
+            }
+
             result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB, 0x00); // build
             result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB + 1*0x14, 0x00); // circuit
             result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB + 2*0x14, 0x00); // singlerace
@@ -710,6 +772,39 @@ namespace LEGORacersAPI
 
             result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0x3D, 46); // set versus button text to line 47 of menustrings.srf
             result &= memoryManager.WriteBytes(GetMenuStringsAddress(46), memoryManager.GetStringBytes("WAITING FOR SERVER TO START A RACE..."));
+
+            menuButtonsPatched = result;
+
+            return result;
+        }
+
+        public bool RestoreMenuButtons()
+        {
+            if (!menuButtonsPatched || menuButtonStateBackup == null || menuButtonStateBackup.Length != 6)
+            {
+                return true;
+            }
+
+            bool result = true;
+            result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB, menuButtonStateBackup[0]);
+            result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB + 1 * 0x14, menuButtonStateBackup[1]);
+            result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB + 2 * 0x14, menuButtonStateBackup[2]);
+            result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB + 3 * 0x14, menuButtonStateBackup[3]);
+            result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB + 4 * 0x14, menuButtonStateBackup[4]);
+            result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0xB + 5 * 0x14, menuButtonStateBackup[5]);
+            result &= memoryManager.WriteByte(RACERSELECT_BUTTONS_BASE + 0x49, racerSelectCancelBackup);
+
+            if (versusAvailabilityBackup != null)
+            {
+                result &= memoryManager.WriteBytes(MAINMENU_BUTTONS_BASE + 0x98, versusAvailabilityBackup);
+            }
+
+            result &= memoryManager.WriteByte(MAINMENU_BUTTONS_BASE + 0x3D, versusTextLineBackup);
+
+            if (result)
+            {
+                menuButtonsPatched = false;
+            }
 
             return result;
         }

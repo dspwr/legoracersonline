@@ -30,6 +30,8 @@ namespace Client
         private Client client;
         private MemoryManager memoryManager;
         private bool updateClient;
+        private bool menuButtonsRemoved;
+        private ClientLogic.IGameRaceStarter raceStarter;
 
         public ClientForm(Process gameProcess, LauncherForm launcherForm)
         {
@@ -96,6 +98,7 @@ namespace Client
                 }
 
                 gameClient = GameClientFactory.GetGameClient(gameProcess);
+                raceStarter = new GameClientRaceStarter(gameClient);
 
                 gameClient.Initialized += gameClient_Initialized;
 
@@ -155,6 +158,7 @@ namespace Client
                     MessageBox.Show("Core initialized");
                     gameClient.RunInBackground = true;
                     gameClient.LoadRRB = false;
+                    TryRemoveMenuButtons();
                     break;
                 case InitializedType.Drivers:
                     MessageBox.Show("Drivers initialized");
@@ -281,6 +285,27 @@ namespace Client
             }));
         }
 
+        private void TryRemoveMenuButtons()
+        {
+            if (menuButtonsRemoved)
+            {
+                return;
+            }
+
+            if (gameClient == null || gameClient.InitializedType == InitializedType.None)
+            {
+                return;
+            }
+
+            if (clientState != ClientState.Connected || client == null || !client.TcpConnected)
+            {
+                return;
+            }
+
+            gameClient.RemoveMenuButtons();
+            menuButtonsRemoved = true;
+        }
+
         void client_PacketReceived(object sender, PacketReceivedEventArgs data)
         {
             if (data.Protocol == ProtocolType.Tcp)
@@ -309,19 +334,41 @@ namespace Client
                                 clientState = ClientState.Connected;
 
                                 SetStatus("Connected");
+                                TryRemoveMenuButtons();
                                 break;
                         }
                         break;
                     case PacketType.PowerUp:
-                        dataGridPlayers.Invoke(new MethodInvoker(() =>
+                            try
                         {
-                            MessageBox.Show(data.Packet.Content);
-                        }));
+                                PowerUpInfo powerUp = ClientLogic.ParsePowerUpContent(data.Packet.Content);
+                                int opponentIndex = participants
+                                    .Where(p => p.Nickname != participant.Nickname)
+                                    .Select((p, i) => new { Participant = p, Index = i })
+                                    .Where(x => x.Participant.Nickname == powerUp.Nickname)
+                                    .Select(x => x.Index)
+                                    .DefaultIfEmpty(-1)
+                                    .First();
+
+                                if (opponentIndex >= 0 && gameClient != null && gameClient.Opponents != null && opponentIndex < gameClient.Opponents.Length)
+                                {
+                                    gameClient.Opponents[opponentIndex].UsePowerUp((Brick)powerUp.BrickType, powerUp.WhiteBricks);
+                                }
+                            }
+                            catch (Exception exc)
+                            {
+                                ErrorHandler.ShowDialog("Power-up packet parse failed", "Received malformed power-up payload from the server.", exc);
+                            }
                         break;
                     case PacketType.Race:
-                        string[] packetPart = data.Packet.Content.Split('|');
-
-                        gameClient.SetupRace(Int32.Parse(packetPart[0]), Int32.Parse(packetPart[1]));
+                        try
+                        {
+                            ClientLogic.ApplyRacePacket(data.Packet.Content, raceStarter);
+                        }
+                        catch (Exception exc)
+                        {
+                            ErrorHandler.ShowDialog("Race packet parse failed", "Received malformed race payload from the server.", exc);
+                        }
                         break;
                     case PacketType.Join:
                         AddPlayer(data.Packet.Content);
@@ -340,6 +387,12 @@ namespace Client
                         {
                             RemovePlayer(data.Packet.Content);
                         }
+                        break;
+                    case PacketType.ConnectionRejected:
+                        client.Disconnect();
+                        clientState = ClientState.Disconnected;
+                        SetStatus("Not Connected");
+                        MessageBox.Show("Cannot join: a race is already in progress on this server.", "Server busy");
                         break;
                 }
             }
@@ -724,7 +777,7 @@ namespace Client
             client.Send(ProtocolType.Tcp, new Packet()
             {
                 PacketType = PacketType.PowerUp,
-                Content = (int)data.BrickType + "|" + (int)data.WhiteBricksAmount
+                Content = participant.Nickname + "|" + (int)data.BrickType + "|" + (int)data.WhiteBricksAmount
             });
             Console.WriteLine(data);
         }
@@ -830,6 +883,21 @@ namespace Client
                 UpdateList();
                 clientState = ClientState.Disconnected;
                 SetStatus("Not Connected");
+            }
+        }
+
+        private class GameClientRaceStarter : ClientLogic.IGameRaceStarter
+        {
+            private readonly GameClient gameClient;
+
+            public GameClientRaceStarter(GameClient gameClient)
+            {
+                this.gameClient = gameClient;
+            }
+
+            public void SetupAndStartRace(int trackId, int laps, int networkOpponents)
+            {
+                gameClient.SetupAndStartRace(trackId, laps, networkOpponents);
             }
         }
     }

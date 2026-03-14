@@ -62,6 +62,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Settings.cs" />
+    <Compile Include="ServerLogic.cs" />
     <Compile Include="ZombieCleanup.cs" />
   </ItemGroup>
   <ItemGroup>
