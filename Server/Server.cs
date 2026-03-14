@@ -32,7 +32,10 @@ namespace Server
 
         public List<ServerParticipant> Participants
         {
-            get { return participants; }
+            get
+            {
+                return participants;
+            }
         }
 
         public delegate void ServerUpdatedHandler(object sender, ServerUpdatedEventArgs data);
@@ -50,7 +53,10 @@ namespace Server
         {
             tcpServer = new TcpListener(new IPEndPoint(IPAddress.Any, 3031));
             udpServer = new UdpClient();
-            udpServer.Client.Bind(new IPEndPoint(IPAddress.Any, 3030));
+
+            ipEndPoint = new IPEndPoint(IPAddress.Any, 3030);
+
+            udpServer.Client.Bind(ipEndPoint);
 
             participants = new List<ServerParticipant>();
 
@@ -125,122 +131,11 @@ namespace Server
                             // Accumulate available bytes into the participant's pending buffer.
                             if (stream.DataAvailable)
                             {
-                                byte[] temp = new byte[4096];
-                                int bytesRead = stream.Read(temp, 0, temp.Length);
+                                int i;
 
-                                if (bytesRead > 0)
+                                while (stream.DataAvailable && (i = stream.Read(bytes, 0, bytes.Length)) != 0)
                                 {
-<<<<<<< HEAD
                                     data = Encoding.ASCII.GetString(bytes, 0, i);
-
-                                    Packet packet = Packet.Populate(data);
-
-                                    if (packet.PacketType == PacketType.Connect)
-                                    {
-                                        if (participants.Count() >= 6)
-                                        {
-                                            participant.RemoveFromServer = true;
-
-                                            Send(stream, new Packet()
-                                            {
-                                                PacketType = PacketType.Connect,
-                                                Content = "FULL"
-                                            });
-                                        }
-                                        else if (participants.Where(p => p.Nickname == packet.Content).Count() > 0)
-                                        {
-                                            participant.RemoveFromServer = true;
-
-                                            Send(stream, new Packet()
-                                            {
-                                                PacketType = PacketType.Connect,
-                                                Content = "UNAVAILABLE"
-                                            });
-                                        }
-                                        else
-                                        {
-                                            participant.Nickname = packet.Content;
-
-                                            Send(stream, new Packet()
-                                            {
-                                                PacketType = PacketType.Connect,
-                                                Content = String.Join("|", participants.Select(p => p.Nickname))
-                                            });
-
-                                            SendAll(new Packet()
-                                            {
-                                                PacketType = PacketType.Join,
-                                                Content = packet.Content
-                                            }, packet.Content);
-
-                                            OnServerUpdated(this, new ServerUpdatedEventArgs(participants));
-                                        }
-                                    }
-                                    else if (packet.PacketType == PacketType.Disconnect)
-                                    {
-                                        if (participant.Nickname == packet.Content)
-                                        {
-                                            SendAll(new Packet()
-                                            {
-                                                PacketType = PacketType.Disconnect,
-                                                Content = participant.Nickname
-                                            }, participant.Nickname);
-                                            participant.RemoveFromServer = true;
-                                            OnServerUpdated(this, new ServerUpdatedEventArgs(participants.Where(p => !p.RemoveFromServer).ToList<ServerParticipant>()));
-                                        }
-                                    }
-                                    else if (packet.PacketType == PacketType.PowerUp)
-                                    {
-                                        foreach (ServerParticipant receiver in participants.Where(p => !p.RemoveFromServer && p.Nickname != participant.Nickname))
-                                        {
-                                            NetworkStream receiverStream = receiver.Client.GetStream();
-
-                                            Send(receiverStream, packet);
-                                        }
-                                    }
-=======
-                                    int oldLength = participant.PendingData.Length;
-                                    byte[] newBuffer = new byte[oldLength + bytesRead];
-                                    Buffer.BlockCopy(participant.PendingData, 0, newBuffer, 0, oldLength);
-                                    Buffer.BlockCopy(temp, 0, newBuffer, oldLength, bytesRead);
-                                    participant.PendingData = newBuffer;
->>>>>>> e81dd5f93ca141b4c2f375355bf8e029364bbeef
-                                }
-                            }
-
-                            // Parse all complete packets from the buffer.
-                            // Protocol: [4-byte little-endian length][packet bytes]
-                            while (participant.PendingData.Length >= 4)
-                            {
-                                int packetLength = BitConverter.ToInt32(participant.PendingData, 0);
-
-                                if (packetLength <= 0 || packetLength > 65536)
-                                {
-                                    // Corrupt framing -- drop this client.
-                                    participant.RemoveFromServer = true;
-                                    break;
-                                }
-
-                                if (participant.PendingData.Length < 4 + packetLength)
-                                    break; // Not enough data yet, wait for more.
-
-                                byte[] packetData = new byte[packetLength];
-                                Buffer.BlockCopy(participant.PendingData, 4, packetData, 0, packetLength);
-
-                                byte[] remaining = new byte[participant.PendingData.Length - 4 - packetLength];
-                                Buffer.BlockCopy(participant.PendingData, 4 + packetLength, remaining, 0, remaining.Length);
-                                participant.PendingData = remaining;
-
-                                Packet packet = Packet.Populate(Encoding.ASCII.GetString(packetData));
-                                HandleTcpPacket(participant, stream, packet);
-                            }
-                        }
-
-                        lock (_participantsLock)
-                        {
-                            participants.RemoveAll(p => p.RemoveFromServer);
-                        }
-                    }
 
                     Thread.Sleep(1); // Prevent busy-wait.
                 }
@@ -262,19 +157,25 @@ namespace Server
                     current = participants.ToList();
                 }
 
-                if (current.Count >= 6)
-                {
-                    participant.RemoveFromServer = true;
-                    Send(stream, new Packet() { PacketType = PacketType.Connect, Content = "FULL" });
-                }
-                else if (current.Any(p => p.Nickname == packet.Content))
-                {
-                    participant.RemoveFromServer = true;
-                    Send(stream, new Packet() { PacketType = PacketType.Connect, Content = "UNAVAILABLE" });
-                }
-                else
-                {
-                    participant.Nickname = packet.Content;
+                                            Send(stream, new Packet()
+                                            {
+                                                PacketType = PacketType.Connect,
+                                                Content = "FULL"
+                                            });
+                                        }
+                                        else if (participants.Where(p => p.Nickname == packet.Content).Count() > 0)
+                                        {
+                                            participant.RemoveFromServer = true;
+
+                                            Send(stream, new Packet()
+                                                {
+                                                    PacketType = PacketType.Connect,
+                                                    Content = "UNAVAILABLE"
+                                                });
+                                        }
+                                        else
+                                        {
+                                            participant.Nickname = packet.Content;
 
                     Send(stream, new Packet()
                     {
@@ -282,11 +183,11 @@ namespace Server
                         Content = String.Join("|", current.Select(p => p.Nickname))
                     });
 
-                    SendAll(new Packet()
-                    {
-                        PacketType = PacketType.Join,
-                        Content = packet.Content
-                    }, packet.Content);
+                                            SendAll(new Packet()
+                                                {
+                                                    PacketType = PacketType.Join,
+                                                    Content = packet.Content
+                                                }, packet.Content);
 
                     List<ServerParticipant> active;
                     lock (_participantsLock)
@@ -326,16 +227,28 @@ namespace Server
                         .ToList();
                 }
 
-                foreach (ServerParticipant receiver in receivers)
-                {
-                    NetworkStream receiverStream = receiver.Client.GetStream();
-                    Send(receiverStream, packet);
+                                            Send(receiverStream, packet);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        participants.RemoveAll(p => p.RemoveFromServer);
+                    }
                 }
+            }
+            catch (Exception exc)
+            {
+                if (exc.GetType() != typeof(ThreadAbortException))
+                    ErrorHandler.ShowDialog("TCP Packet could not be read", "The receiving or reading of a TCP Packet caused an error.", exc);
             }
         }
 
         private void UdpListener()
         {
+            string data = "";
+
             while (true)
             {
                 // Use a local endpoint variable -- the shared ipEndPoint field was a bug:
