@@ -29,6 +29,8 @@ namespace Server
             get { return started; }
         }
 
+        public bool RaceActive { get; set; }
+
         public List<ServerParticipant> Participants
         {
             get { return participants; }

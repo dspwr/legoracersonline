@@ -77,5 +77,10 @@ namespace Library
         public int PowerUpType { get; set; }
 
         public int PowerUpWhiteBricks { get; set; }
+
+        /// <summary>
+        /// Gets or sets the time of the Participant's last activity (last UDP coordinates packet received).
+        /// </summary>
+        public DateTime LastActivity { get; set; }
     }
 }

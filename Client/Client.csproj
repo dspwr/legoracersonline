@@ -155,11 +155,10 @@
     <None Include="Resources\Button_Launch.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
+
+  <!-- Run unit tests before compiling this project.  A test failure aborts the build. -->
   <Target Name="BeforeBuild">
+    <Exec Command="dotnet test &quot;$(MSBuildProjectDirectory)\..\Tests\Tests.csproj&quot; --configuration $(Configuration) --logger &quot;console;verbosity=minimal&quot;" />
   </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

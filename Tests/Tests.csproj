@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>disable</Nullable>
+    <!-- Disable the WinForms-required designer serialisation; we run headless. -->
+    <UseWindowsForms>false</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Library and LEGORacersAPI are class libraries — safe to reference directly.      -->
+    <!-- We intentionally do NOT reference Server/Client (WinExe) to avoid circular       -->
+    <!-- pre-build dependencies.  All tested logic lives in these two class libraries.    -->
+    <ProjectReference Include="..\Library\Library.csproj" />
+    <ProjectReference Include="..\LEGORacersAPI\LEGORacersAPI.csproj" />
+  </ItemGroup>
+
+</Project>

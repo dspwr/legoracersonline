@@ -38,6 +38,13 @@ namespace LEGORacersAPI
         private int driverNumber;
         private static int currentDriverNumber;
 
+        public static int CurrentDriverNumber { get { return currentDriverNumber; } }
+
+        public static void ResetDriverCounter()
+        {
+            currentDriverNumber = 0;
+        }
+
         /// <summary>
         /// Gets or sets the drivers X-coordinate.
         /// </summary>
@@ -307,6 +314,11 @@ namespace LEGORacersAPI
             driverNumber = currentDriverNumber;
             currentDriverNumber++;
 
+            StartPollingThread();
+        }
+
+        protected virtual void StartPollingThread()
+        {
             Thread powerUpThread = new Thread(CheckPowerUp);
             powerUpThread.Start();
         }

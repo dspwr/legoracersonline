@@ -243,15 +243,19 @@ namespace Server
                         PacketType = PacketType.Race,
                         Content = packetContent
                     });
+
+                    gameServer.RaceActive = true;
                 }
             }
         }
 
         private void timerCleanUp_Tick(object sender, EventArgs e)
         {
-            //gameServer.Participants.RemoveAll(p => p.LastActivity < DateTime.Now.AddSeconds(-5));
-
-            //ReloadPlayers();
+            ZombieCleanup.PerformCleanup(
+                gameServer.Participants,
+                gameServer.RaceActive,
+                TimeSpan.FromSeconds(30),
+                p => gameServer.DisconnectParticipant((ServerParticipant)p));
         }
 
         private void threeWhiteBricksToolStripMenuItem_Click(object sender, EventArgs e)
