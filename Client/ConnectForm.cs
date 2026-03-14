@@ -65,7 +65,7 @@ namespace Client
                             // Close the form and return to the main screen
                             Close();
                         }
-                        catch (SocketException ex)
+                        catch (SocketException)
                         {
                             // Occurs when the Client was unable to connect to the Server
                             MessageBox.Show("The given Server Address and Port does not seem to respond. Please check if the Server is available and retry again.", "Error while connecting");

@@ -17,7 +17,6 @@ namespace Client
 {
     public partial class ClientForm : Form
     {
-        private IPEndPoint ipEndPoint;
         private Thread thread;
         private Process gameProcess;
         private LauncherForm launcherForm;
@@ -25,20 +24,9 @@ namespace Client
         private ClientState clientState;
         private List<Participant> participants;
         private GameClient gameClient;
-        private Opponent[] opponents;
         private Participant participant;
-        private Player gamePlayer;
-        private int playerCount;
-        private byte[] sendBytes;
-        private byte[] receiveBytes;
-        private bool engineInitialized;
-        private int lastKnownPowerUpType;
-        private int lastKnownPowerUpWhiteBricks;
-        private bool sentLastUsedPowerUp;
         private int[] powerUpsUsed;
         private TcpClient tcpClient;
-        private NetworkStream stream;
-        private Thread listenerThread;
         private Client client;
         private MemoryManager memoryManager;
         private bool updateClient;
@@ -100,9 +88,6 @@ namespace Client
         {
             try
             {
-                engineInitialized = false;
-
-                sentLastUsedPowerUp = true;
                 powerUpsUsed = new int[5];
 
                 for (int i = 0; i < 5; i++)
@@ -115,9 +100,6 @@ namespace Client
                 gameClient.Initialized += gameClient_Initialized;
 
                 participants = new List<Participant>();
-
-                // Set the amount of players to zero
-                playerCount = 0;
 
                 // Create a new Player object that is going to hold the local Player information
                 participant = new Participant()
@@ -468,8 +450,13 @@ namespace Client
                     }));
                 }*/
 
+                int opponentIndex = 0;
+
                 foreach (Participant enemy in participants.Where(p => p.Nickname != participant.Nickname))
                 {
+                    if (opponentIndex >= gameClient.Opponents.Length)
+                        break; // Maximum of 5 opponent slots in the game memory.
+
                     /*if (powerUpsUsed[i] != enemy.PowerUpsUsed)
                     {
                         powerUpsUsed[i] = enemy.PowerUpsUsed;
@@ -477,24 +464,24 @@ namespace Client
                         //gameClient.UsePowerUp(enemy.PowerUpType, enemy.PowerUpWhiteBricks, i + 1);
                     }*/
 
-                    gameClient.Opponents[0].X = enemy.X;
-                    gameClient.Opponents[0].Y = enemy.Y;
-                    gameClient.Opponents[0].Z = enemy.Z;
-                    gameClient.Opponents[0].SpeedX = enemy.SpeedX;
-                    gameClient.Opponents[0].SpeedY = enemy.SpeedY;
-                    gameClient.Opponents[0].SpeedZ = enemy.SpeedZ;
-                    gameClient.Opponents[0].VectorX1 = enemy.VectorX1;
-                    gameClient.Opponents[0].VectorY1 = enemy.VectorY1;
-                    //opponents[0].VectorZ1 = enemy.VectorZ1;
-                    gameClient.Opponents[0].VectorX2 = enemy.VectorX2;
-                    gameClient.Opponents[0].VectorY2 = enemy.VectorY2;
-                    //opponents[0].VectorZ2 = enemy.VectorZ2;
+                    gameClient.Opponents[opponentIndex].X = enemy.X;
+                    gameClient.Opponents[opponentIndex].Y = enemy.Y;
+                    gameClient.Opponents[opponentIndex].Z = enemy.Z;
+                    gameClient.Opponents[opponentIndex].SpeedX = enemy.SpeedX;
+                    gameClient.Opponents[opponentIndex].SpeedY = enemy.SpeedY;
+                    gameClient.Opponents[opponentIndex].SpeedZ = enemy.SpeedZ;
+                    gameClient.Opponents[opponentIndex].VectorX1 = enemy.VectorX1;
+                    gameClient.Opponents[opponentIndex].VectorY1 = enemy.VectorY1;
+                    //opponents[opponentIndex].VectorZ1 = enemy.VectorZ1;
+                    gameClient.Opponents[opponentIndex].VectorX2 = enemy.VectorX2;
+                    gameClient.Opponents[opponentIndex].VectorY2 = enemy.VectorY2;
+                    //opponents[opponentIndex].VectorZ2 = enemy.VectorZ2;
                     //if (GetActiveWindowTitle() == "LEGO Racers")
                     //{
                     //    g.DrawString("Knoest:\nX: " + enemy.X + "\nY: " + enemy.Y + "\nZ: " + enemy.Z, font, brush, new PointF(20, 20));
                     //}
 
-                    break;
+                    opponentIndex++;
                 }
             }
         }
@@ -531,7 +518,21 @@ namespace Client
 
                         if (clientState == ClientState.Connected)
                         {
-                            string packetContent = participant.Nickname + "|" + gameClient.Player.X + "|" + gameClient.Player.Y + "|" + gameClient.Player.Z + "|" + gameClient.Player.SpeedX + "|" + gameClient.Player.SpeedY + "|" + gameClient.Player.SpeedZ + "|" + gameClient.Player.VectorX1 + "|" + gameClient.Player.VectorY1 + "|" + gameClient.Player.VectorZ1 + "|" + gameClient.Player.VectorX2 + "|" + gameClient.Player.VectorY2 + "|" + gameClient.Player.VectorZ2;
+                            // Use InvariantCulture so floats are always serialized with '.' as decimal separator,
+                            // regardless of the OS locale (e.g. Polish locale uses ',' which would break parsing).
+                            string packetContent = participant.Nickname
+                                + "|" + gameClient.Player.X.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.Y.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.Z.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.SpeedX.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.SpeedY.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.SpeedZ.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.VectorX1.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.VectorY1.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.VectorZ1.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.VectorX2.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.VectorY2.ToString(CultureInfo.InvariantCulture)
+                                + "|" + gameClient.Player.VectorZ2.ToString(CultureInfo.InvariantCulture);
 
                             /*if (!sentLastUsedPowerUp)
                             {
@@ -770,8 +771,6 @@ namespace Client
                 settingsForm.ShowDialog();
             }
         }
-
-        private bool initialized = false;
 
         private void testToolStripMenuItem_Click(object sender, EventArgs e)
         {

@@ -313,7 +313,7 @@ namespace LEGORacersAPI
                         // Core functionality is now initialized
                         InitializedType = InitializedType.Core;
 
-                        Initialized(InitializedType.Core);
+                        if (Initialized != null) Initialized(InitializedType.Core);
 
                         while (active && !IsRaceRunning)
                         {
@@ -348,7 +348,7 @@ namespace LEGORacersAPI
 
                         InitializedType = InitializedType.Both;
 
-                        Initialized(InitializedType.Drivers);
+                        if (Initialized != null) Initialized(InitializedType.Drivers);
                     }
 
                     Thread.Sleep((int)Settings.RefreshRate);

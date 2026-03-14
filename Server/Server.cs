@@ -21,6 +21,9 @@ namespace Server
         // Lock protecting the participants list -- accessed from TCP and UDP threads.
         private readonly object _participantsLock = new object();
 
+        // Signals both listener threads to stop cleanly (avoids Thread.Abort).
+        private volatile bool _stopRequested;
+
         public bool Started
         {
             get { return started; }
@@ -75,27 +78,19 @@ namespace Server
 
         public void Stop()
         {
-            if (tcpListenerThread.IsAlive)
-            {
-                tcpListenerThread.Abort();
-            }
+            _stopRequested = true;
+            started = false;
 
-            if (udpListenerThread.IsAlive)
-            {
-                udpListenerThread.Abort();
-            }
-
+            // Closing the sockets unblocks any pending Receive/Accept calls in the listener threads.
             tcpServer.Stop();
             udpServer.Close();
-
-            started = false;
         }
 
         private void TcpListener()
         {
             try
             {
-                while (true)
+                while (!_stopRequested)
                 {
                     if (started)
                     {
@@ -173,7 +168,7 @@ namespace Server
             }
             catch (Exception exc)
             {
-                if (exc.GetType() != typeof(ThreadAbortException))
+                if (!_stopRequested)
                     ErrorHandler.ShowDialog("TCP Packet could not be read", "The receiving or reading of a TCP Packet caused an error.", exc);
             }
         }
@@ -262,7 +257,7 @@ namespace Server
 
         private void UdpListener()
         {
-            while (true)
+            while (!_stopRequested)
             {
                 // Use a local endpoint variable -- the shared ipEndPoint field was a bug:
                 // Receive() overwrites it, so a concurrent Send() could reply to the wrong address.
@@ -325,6 +320,9 @@ namespace Server
                 }
                 catch (SocketException exc)
                 {
+                    if (_stopRequested)
+                        break; // Socket was intentionally closed by Stop().
+
                     if (exc.ErrorCode == 10054)
                     {
                         // Participant closed the client -- no action required.
@@ -332,7 +330,8 @@ namespace Server
                 }
                 catch (Exception exc)
                 {
-                    Console.WriteLine(exc.Message);
+                    if (!_stopRequested)
+                        Console.WriteLine(exc.Message);
                 }
             }
         }
